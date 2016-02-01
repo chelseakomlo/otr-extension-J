@@ -2,16 +2,16 @@
 
 This document describes the J extension to the Off-the-Record protocol. It is based on the Off-the-Record Messaging Protocol version 3, that can be found at https://otr.cypherpunks.ca/Protocol-v3-4.0.0.html. This document only describes the additions to that protocol. The J extension is also backwards compatible using the version negotiation component of OTR - if only one peer supports J, the negotiation will simply choose version 3 instead.
 
-The main goal of extension J is to update the protocol choices for OTR to more modern algorithms with larger security margins. The previous choices of DSA with 1024 bit keys and SHA-1 are at the end of 2015 becoming uncomfortably close to being possible to crack.
+The main goal of extension J is to update the protocol choices for OTR to more modern algorithms with larger security margins. As we are beyond 2015, the previous choices of DSA with 1024 bit keys and SHA-1 are becoming uncomfortably close to being possible to crack.
 
 The main changes in this extension are to:
 
 - Replace DSA long lived keys for signatures with Ed25519.
 - Change the hash and HMAC algorithms from SHA-1 and SHA-256 into SHA3-256 in the OTR and SMP protocol
 
-The main purpose of this extension is to switch out only the algorithms that potentially can become problematic soon. As such, it does not switch out the Diffie-Hellman key exchange from the OTR protocol.
+The main purpose of this extension is to switch out only the algorithms that can potentially become problematic soon. As Diffie-Hellman with large primes is predicated to be secure for the near future, this extension does not switch out the Diffie Hellman key exchange from the OTR protocol.
 
-## Wire protocol
+## OTR Query Messages (Wire protocol)
 
 The J extension has a wire protocol that is similar to version 3. The biggest differences are in the representation of the new extension version in the various messages.
 
@@ -20,6 +20,8 @@ In the Query message it is now possible to use the letter J in addition with the
 `"?OTRv23J?"`
 
 is a likely thing to see on the wire.
+
+### Tagged plaintext messages
 
 The tagged plaintext message can now also contain:
 
@@ -31,7 +33,7 @@ In every message that includes a SHORT Protocol Version entry, this should be th
 
 The fragmentation format is the same as for OTR version 3. That means you can't tell the difference between a 3 and a J protocol message from the fragmented pieces - you will have to wait until after reassembly to finalize how to deal with a message.
 
-Finally, the version of the SMP protocol described in this protocol will stay version 1. That means that the SMP protocol version 1 inside of extension J is _not_ the same as SMP protocol version 1 inside of the OTR protocol version 2 or 3.
+Finally, the version of the SMP protocol described in this protocol will remain version 1. That means that the SMP protocol version 1 inside of extension J is _not_ the same as SMP protocol version 1 inside of the OTR protocol version 2 or 3.
 
 ## Representation of keys
 
@@ -72,15 +74,15 @@ There are a number of places in OTR version 3 that uses SHA-1 or SHA2-256 in ord
     - The Authenticator should be calculated using SHA3-256(K||M), instead of SHA1-HMAC.
 - Computing AES keys, MAC keys and the secure session ID:
     - Redefine `h1()` to use SHA3-256 instead of SHA1.
-    - Redefine `h2()` to use SHA3-256 instead of SHA256.
+    - Redefine `h2()` to use SHA3-256 instead of SHA-256.
     - The sending and receiving MAC keys should be calculated to be the output of SHA3-256 instead of SHA1
 - When revealing MAC keys
     - Instead of revealing MAC keys by concatenating 20 byte values, concatenate 32 byte values (since the MAC key will be longer using extension J).
 
 
-## Hashes in SMP
+## Socialist Millionaires' Protocol (SMP)
 
-There are a number of places in the SMP protocol that use hashes. These places should all be replaced with SHA3-256, as follows:
+There are a number of places in the SMP protocol that change with extension J, due to the use of hashes. These places should all be replaced with SHA3-256, as follows:
 
 - Creating the actual secret `x` or `y` should be done by taking the SHA3-256 hash of the material, not the SHA-256 hash.
 - The SMP Hash function should be SHA3-256 instead of SHA-256 for every place where the hash of one or two MPIs is required.
@@ -88,11 +90,18 @@ There are a number of places in the SMP protocol that use hashes. These places s
 - To calculate `cP` use SHA3-256 instead of SHA-256.
 - To calculate `cR` use SHA3-256 instead of SHA-256.
 
+
 ## Various resolution mechanisms
+
+### Policies
 
 This extension adds a new policy flag called ALLOW_EXTENSION_J - this works exactly the same as the ALLOW_V2 and ALLOW_V3 policies. OTR is also only disabled if all four of the ALLOW_ flags are disabled.
 
+### Migration from previous versions
+
 Extension J only supports Ed25519 keys - as such, it is not possible to use previously established DSA keys for extension J communication. This presents a bootstrap problem for peers with many verified fingerprints. This protocol specification does not specify an automated solution for this problem, although it is practical to turn off extension J, send the new fingerprint information for the Ed25519 keys over an already authenticated version 3 channel, and then turn on extension J again.
+
+### Version negotiation
 
 If extension J is implemented, it should take precedence over version 3 and version 2.
 
